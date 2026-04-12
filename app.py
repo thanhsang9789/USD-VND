@@ -18,7 +18,12 @@ if os.path.exists('.env'):
 # Telegram Bot Config (Load from Environment Variables)
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
-TARGET_BID_THRESHOLD = 26668.0
+TARGET_BIDS_STR = os.environ.get('TARGET_BIDS', '26668.0, 27000.0, 27500.0')
+
+try:
+    TARGET_BIDS = [float(x.strip()) for x in TARGET_BIDS_STR.split(',') if x.strip()]
+except ValueError:
+    TARGET_BIDS = [26668.0]
 
 def fetch_chogia_data():
     url = "https://chogia.vn/get-live-price.php"
@@ -79,8 +84,8 @@ def send_telegram_alert(message):
         print(f"[Telegram] Failed to send alert: {e}")
 
 def monitor_usd_alert():
-    print("[Telegram Watcher] Bot started watching for USD >= 27,000 VND...")
-    alert_triggered = False
+    print(f"[Telegram Watcher] Bot started watching for USD targets: {TARGET_BIDS} VND...")
+    alerted_targets = set()
 
     while True:
         try:
@@ -95,13 +100,14 @@ def monitor_usd_alert():
 
                     print(f"Watchdog: Current USD Bid is {rate['buy_formatted']} ₫ ({buy_price})")
                     
-                    if buy_price >= TARGET_BID_THRESHOLD and not alert_triggered:
-                        msg = f"🚨 CẢNH BÁO THỊ TRƯỜNG!\nGiá USD (Mua vào) chợ đen vừa chạm mốc {rate['buy_formatted']} ₫"
-                        send_telegram_alert(msg)
-                        alert_triggered = True  # Prevent spamming alerts every 2 minutes
-                    elif buy_price < TARGET_BID_THRESHOLD:
-                        # Reset the trigger if price drops below the threshold again
-                        alert_triggered = False
+                    for target in sorted(TARGET_BIDS):
+                        if buy_price >= target and target not in alerted_targets:
+                            msg = f"🚨 CẢNH BÁO THỊ TRƯỜNG!\nGiá USD (Mua vào) chợ đen vừa VƯỢT mốc {target:,.0f} ₫.\nGiá hiện tại: {rate['buy_formatted']} ₫"
+                            send_telegram_alert(msg)
+                            alerted_targets.add(target)
+                        elif buy_price < target and target in alerted_targets:
+                            # Reset the trigger if price drops below the threshold again
+                            alerted_targets.remove(target)
                     
                     break # Checked USD, exit loop
             
