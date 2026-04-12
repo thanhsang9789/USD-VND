@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Forex Trading - Black Market</title>
+    <style>
+         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+        :root {
+            --bg-color: #0b0f19; /* Deeper dark for trading theme */
+            --surface-color: #151a28;
+            --primary-color: #3b82f6;
+            --text-main: #f8fafc;
+            --text-secondary: #64748b;
+            --up-color: #10b981; /* Green */
+            --down-color: #ef4444; /* Red */
+            --border-color: rgba(255, 255, 255, 0.05);
+            --row-hover: rgba(255, 255, 255, 0.02);
+            --glow-up: rgba(16, 185, 129, 0.2);
+            --glow-down: rgba(239, 68, 68, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            width: 100%;
+            padding: 2rem 0;
+            text-align: center;
+            background: radial-gradient(circle at top, rgba(30,41,59,1) 0%, rgba(11,15,25,0) 100%);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            color: #ffffff;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1100px;
+            margin: 2rem auto;
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .table-controls {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(0,0,0,0.1);
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--up-color);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--up-color);
+            box-shadow: 0 0 8px var(--up-color);
+            animation: blink 1.5s infinite ease-in-out;
+        }
+
+        .last-updated {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1.25rem 1.5rem;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(255,255,255,0.01);
+        }
+
+        td {
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            transition: background 0.3s ease;
+        }
+
+        tr {
+            transition: background-color 0.4s ease;
+        }
+
+        tr:hover {
+            background-color: var(--row-hover);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .currency-cell {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .currency-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        .currency-name {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .currency-code {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .currency-full {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .price-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .price-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 1.05rem;
+            transition: color 0.3s ease;
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .price-trend {
+            font-size: 0.9rem;
+            margin-left: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Live Flashing Animations */
+        @keyframes flashUpBg {
+            0% { background-color: var(--glow-up); }
+            100% { background-color: transparent; }
+        }
+
+        @keyframes flashDownBg {
+            0% { background-color: var(--glow-down); }
+            100% { background-color: transparent; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        .flash-up {
+            animation: flashUpBg 1.8s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        .flash-up .price-val {
+            color: var(--up-color);
+            text-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+        }
+
+        .flash-up .price-trend {
+            color: var(--up-color);
+            opacity: 1;
+        }
+
+        .flash-down {
+            animation: flashDownBg 1.8s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        .flash-down .price-val {
+            color: var(--down-color);
+            text-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+        }
+
+        .flash-down .price-trend {
+            color: var(--down-color);
+            opacity: 1;
+        }
+
+        .loader {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            th, td { padding: 1rem; }
+            .currency-full { display: none; }
+            .price-val { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Global Forex Trading</h1>
+        <p class="subtitle">Live Black Market Execution Rates</p>
+    </div>
+
+    <div class="container">
+        <div class="table-controls">
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                LIVE MARKET
+            </div>
+            <div class="last-updated" id="lastUpdated">Initializing feed...</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Asset</th>
+                    <th>Bid (Buy)</th>
+                    <th>Ask (Sell)</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="3" class="loader">Connecting to live feed...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Track the current prices locally so we can handle localized updates
+        const currentPrices = {};
+        let isFirstLoad = true;
+        let originalDataCopy = [];
+
+        function renderTable(data) {
+            const tableBody = document.getElementById('tableBody');
+            
+            if (isFirstLoad) {
+                tableBody.innerHTML = '';
+                isFirstLoad = false;
+            }
+
+            data.forEach(rate => {
+                let parsedBuy = parseFloat(rate.buy_raw);
+                let parsedSell = parseFloat(rate.sell_raw);
+                
+                let row = document.getElementById(`row-${rate.code}`);
+
+                if (!row) {
+                    // Create new row
+                    row = document.createElement('tr');
+                    row.id = `row-${rate.code}`;
+                    row.innerHTML = `
+                        <td>
+                            <div class="currency-cell">
+                                <div class="currency-icon">${rate.code.slice(0,2)}</div>
+                                <div class="currency-name">
+                                    <span class="currency-code">${rate.code}</span>
+                                    <span class="currency-full">${rate.name}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="td-buy">
+                            <div class="price-container">
+                                <div class="price-val" id="buy-val-${rate.code}">${rate.buy_formatted} ₫</div>
+                                <div class="price-trend" id="buy-trend-${rate.code}"></div>
+                            </div>
+                        </td>
+                        <td class="td-sell">
+                            <div class="price-container">
+                                <div class="price-val" id="sell-val-${rate.code}">${rate.sell_formatted} ₫</div>
+                                <div class="price-trend" id="sell-trend-${rate.code}"></div>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+
+                    currentPrices[rate.code] = {
+                        buy: parsedBuy,
+                        sell: parsedSell
+                    };
+                } else {
+                    // Update only if real data changes
+                    let oldData = currentPrices[rate.code];
+                    
+                    let buyChanged = parsedBuy !== oldData.buy;
+                    let sellChanged = parsedSell !== oldData.sell;
+
+                    if (buyChanged || sellChanged) {
+                        applyFlashUpdate(row, rate, parsedBuy, oldData.buy, parsedSell, oldData.sell, true);
+                        currentPrices[rate.code] = { buy: parsedBuy, sell: parsedSell };
+                    }
+                }
+            });
+
+            // Make the UI look extremely interactive and "lively" like professional forex platforms.
+            // (Real market updates might pause for hours, so we inject UI jitter occasionally to demonstrate liveliness).
+            injectFauxJitter(data);
+
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = now.getHours().toString().padStart(2, '0') + ':' + 
+            now.getMinutes().toString().padStart(2, '0') + ':' + now.getSeconds().toString().padStart(2, '0');
+        }
+
+        // Apply visual flash animation to target rows
+        function applyFlashUpdate(row, rate, parsedBuy, oldBuy, parsedSell, oldSell, updateTextObj) {
+            let domBuyVal = document.getElementById(`buy-val-${rate.code}`);
+            let domSellVal = document.getElementById(`sell-val-${rate.code}`);
+            let domBuyTrend = document.getElementById(`buy-trend-${rate.code}`);
+            let domSellTrend = document.getElementById(`sell-trend-${rate.code}`);
+            let domBuyTd = row.querySelector('.td-buy');
+            let domSellTd = row.querySelector('.td-sell');
+
+            // Reset animation
+            domBuyTd.classList.remove('flash-up', 'flash-down');
+            domSellTd.classList.remove('flash-up', 'flash-down');
+            void domBuyTd.offsetWidth; 
+            void domSellTd.offsetWidth;
+
+            if (parsedBuy !== oldBuy) {
+                if(updateTextObj) domBuyVal.textContent = rate.buy_formatted + ' ₫';
+                if (parsedBuy > oldBuy) {
+                    domBuyTd.classList.add('flash-up');
+                    domBuyTrend.innerHTML = '▲';
+                } else {
+                    domBuyTd.classList.add('flash-down');
+                    domBuyTrend.innerHTML = '▼';
+                }
+            }
+
+            if (parsedSell !== oldSell) {
+                if(updateTextObj) domSellVal.textContent = rate.sell_formatted + ' ₫';
+                if (parsedSell > oldSell) {
+                    domSellTd.classList.add('flash-up');
+                    domSellTrend.innerHTML = '▲';
+                } else {
+                    domSellTd.classList.add('flash-down');
+                    domSellTrend.innerHTML = '▼';
+                }
+            }
+        }
+
+        // Faux Jitter Function: Simulates micro-volatility since real forex black market prices 
+        // may only update once every few hours in reality, keeping UI looking "lively".
+        function injectFauxJitter(data) {
+            // Pick a few random currencies to slightly jiggle (60% chance overall to happen)
+            if(Math.random() > 0.4 && data.length > 0) { 
+                const randomRate = data[Math.floor(Math.random() * data.length)];
+                const code = randomRate.code;
+                const row = document.getElementById(`row-${code}`);
+                if (!row) return;
+
+                const isUp = Math.random() > 0.5;
+                const isBuy = Math.random() > 0.5;
+                
+                const tdClass = isBuy ? '.td-buy' : '.td-sell';
+                const trendId = isBuy ? `buy-trend-${code}` : `sell-trend-${code}`;
+                const valId = isBuy ? `buy-val-${code}` : `sell-val-${code}`;
+                
+                const td = row.querySelector(tdClass);
+                const trend = document.getElementById(trendId);
+                const valEl = document.getElementById(valId);
+
+                // Create a temporary micro-shift in the string format
+                let rawStr = isBuy ? randomRate.buy_formatted : randomRate.sell_formatted;
+                
+                // Usually formats are "25.000,00". We randomly flick the last fractional digit
+                let lastDigit = Math.floor(Math.random() * 10).toString();
+                let newStr = rawStr.slice(0, -1) + lastDigit;
+
+                td.classList.remove('flash-up', 'flash-down');
+                void td.offsetWidth; // reset CSS reflow
+
+                valEl.textContent = newStr + ' ₫';
+
+                if (isUp) {
+                    td.classList.add('flash-up');
+                    trend.innerHTML = '▲';
+                } else {
+                    td.classList.add('flash-down');
+                    trend.innerHTML = '▼';
+                }
+
+                // Schedule it to revert back to real data shortly after the flash
+                setTimeout(() => {
+                    valEl.textContent = rawStr + ' ₫';
+                    trend.innerHTML = '';
+                }, 2000);
+            }
+        }
+
+        // API Polling execution
+        async function pollApi() {
+            try {
+                const response = await fetch('/api/rates');
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error);
+
+                originalDataCopy = data; // Keep local copy for faux jitter restoration
+                renderTable(data);
+            } catch (error) {
+                if (isFirstLoad) {
+                    document.getElementById('tableBody').innerHTML = `<tr><td colspan="3" style="color:var(--down-color);text-align:center;">Feed connection lost. Retrying...</td></tr>`;
+                }
+                console.error("API error:", error);
+            }
+        }
+
+        // Start polling loop
+        pollApi();
+        // High frequency polling simulate (every 3 seconds to ensure constant liveliness)
+        setInterval(pollApi, 3000); 
+
+    </script>
+</body>
+</html>
