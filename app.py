@@ -7,10 +7,18 @@ import time
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
-# Telegram Bot Config (Load from Environment Variables on Cloud)
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '')
-TARGET_BID_THRESHOLD = 27000.0
+# Load .env file securely for local testing without leaking to GitHub
+if os.path.exists('.env'):
+    with open('.env', 'r') as f:
+        for line in f:
+            if '=' in line and not line.strip().startswith('#'):
+                k, v = line.strip().split('=', 1)
+                os.environ[k.strip()] = v.strip()
+
+# Telegram Bot Config (Load from Environment Variables)
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID', '').strip()
+TARGET_BID_THRESHOLD = 26668.0
 
 def fetch_chogia_data():
     url = "https://chogia.vn/get-live-price.php"
