@@ -314,11 +314,12 @@
                     <th>Asset</th>
                     <th>Bid (Buy)</th>
                     <th>Ask (Sell)</th>
+                    <th>VCB Ask - Live Ask</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
                 <tr>
-                    <td colspan="3" class="loader">Connecting to live feed...</td>
+                    <td colspan="4" class="loader">Connecting to live feed...</td>
                 </tr>
             </tbody>
         </table>
@@ -398,6 +399,11 @@
                                 <div class="price-trend" id="sell-trend-${rate.code}"></div>
                             </div>
                         </td>
+                        <td class="td-diff">
+                            <div class="price-container">
+                                <div class="price-val" id="diff-val-${rate.code}" style="transition: color 0.3s ease;">-</div>
+                            </div>
+                        </td>
                     `;
                     tableBody.appendChild(row);
 
@@ -405,6 +411,7 @@
                         buy: parsedBuy,
                         sell: parsedSell
                     };
+                    updateDiff(rate.code);
                 } else {
                     // Update only if real data changes
                     let oldData = currentPrices[rate.code];
@@ -415,6 +422,7 @@
                     if (buyChanged || sellChanged) {
                         applyFlashUpdate(row, rate, parsedBuy, oldData.buy, parsedSell, oldData.sell, true);
                         currentPrices[rate.code] = { buy: parsedBuy, sell: parsedSell };
+                        updateDiff(rate.code);
                     }
                 }
             });
@@ -603,6 +611,7 @@
                         buy: parsedBuy,
                         sell: parsedSell
                     };
+                    updateDiff(rate.code);
                 } else {
                     let oldData = vcbCurrentPrices[rate.code];
                     let buyChanged = parsedBuy !== oldData.buy;
@@ -611,6 +620,7 @@
                     if (buyChanged || sellChanged) {
                         applyVcbFlashUpdate(row, rate, parsedBuy, oldData.buy, parsedSell, oldData.sell);
                         vcbCurrentPrices[rate.code] = { buy: parsedBuy, sell: parsedSell };
+                        updateDiff(rate.code);
                     }
                 }
             });
@@ -657,6 +667,29 @@
             }
         }
 
+        function updateDiff(code) {
+            let liveData = currentPrices[code];
+            let vcbData = vcbCurrentPrices[code];
+            let domDiffVal = document.getElementById(`diff-val-${code}`);
+            
+            if (liveData && vcbData && domDiffVal) {
+                if (vcbData.sell === 0 || liveData.sell === 0) {
+                    domDiffVal.textContent = '-';
+                    return;
+                }
+                let diff = vcbData.sell - liveData.sell;
+                let diffFormatted = (diff > 0 ? '+' : '') + diff.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) + ' ₫';
+                domDiffVal.textContent = diffFormatted;
+                
+                if (diff > 0) {
+                    domDiffVal.style.color = "var(--up-color)";
+                } else if (diff < 0) {
+                    domDiffVal.style.color = "var(--down-color)";
+                } else {
+                    domDiffVal.style.color = "var(--text-main)";
+                }
+            }
+        }
 
     </script>
 </body>
