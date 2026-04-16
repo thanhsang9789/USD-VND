@@ -314,7 +314,7 @@
                     <th>Asset</th>
                     <th>Bid (Buy)</th>
                     <th>Ask (Sell)</th>
-                    <th>VCB Ask - Live Ask</th>
+                    <th>Live Bid - VCB Ask</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -673,11 +673,11 @@
             let domDiffVal = document.getElementById(`diff-val-${code}`);
             
             if (liveData && vcbData && domDiffVal) {
-                if (vcbData.sell === 0 || liveData.sell === 0) {
+                if (liveData.buy === 0 || vcbData.sell === 0) {
                     domDiffVal.textContent = '-';
                     return;
                 }
-                let diff = vcbData.sell - liveData.sell;
+                let diff = liveData.buy - vcbData.sell;
                 let diffFormatted = (diff > 0 ? '+' : '') + diff.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) + ' ₫';
                 domDiffVal.textContent = diffFormatted;
                 
