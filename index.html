@@ -297,7 +297,7 @@
 
     <div class="header">
         <h1>Vietnam Forex Trading</h1>
-        <p class="subtitle">Live Black Market Execution Rates</p>
+        <p class="subtitle">Vietnam Black Market Execution Rates</p>
     </div>
 
     <div class="container">
@@ -324,10 +324,38 @@
         </table>
     </div>
 
+    <!-- Vietcombank Rates Container -->
+    <div class="container">
+        <div class="table-controls">
+            <div class="live-badge" style="background: rgba(59, 130, 246, 0.1); color: var(--primary-color);">
+                <div class="live-dot"
+                    style="background-color: var(--primary-color); box-shadow: 0 0 8px var(--primary-color);"></div>
+                VIETCOMBANK RATES
+            </div>
+            <div class="last-updated" id="vcbLastUpdated">Initializing feed...</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Asset</th>
+                    <th>Bid (Buy)</th>
+                    <th>Ask (Sell)</th>
+                </tr>
+            </thead>
+            <tbody id="vcbTableBody">
+                <tr>
+                    <td colspan="3" class="loader">Connecting to live feed...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
     <script>
         // Track the current prices locally so we can handle localized updates
         const currentPrices = {};
+        const vcbCurrentPrices = {};
         let isFirstLoad = true;
+        let isVcbFirstLoad = true;
         let originalDataCopy = [];
 
         function renderTable(data) {
@@ -507,8 +535,128 @@
 
         // Start polling loop
         pollApi();
+        pollVcbApi();
         // High frequency polling simulate (every 3 seconds to ensure constant liveliness)
         setInterval(pollApi, 3000);
+        setInterval(pollVcbApi, 5000);
+
+        async function pollVcbApi() {
+            try {
+                const response = await fetch('/api/vcb_rates');
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                renderVcbTable(data);
+            } catch (error) {
+                if (isVcbFirstLoad) {
+                    document.getElementById('vcbTableBody').innerHTML = `<tr><td colspan="3" style="color:var(--down-color);text-align:center;">VCB Feed connection lost. Retrying...</td></tr>`;
+                }
+                console.error("VCB API error:", error);
+            }
+        }
+
+        function renderVcbTable(data) {
+            const tableBody = document.getElementById('vcbTableBody');
+
+            if (isVcbFirstLoad) {
+                tableBody.innerHTML = '';
+                isVcbFirstLoad = false;
+            }
+
+            data.forEach(rate => {
+                let parsedBuy = parseFloat(rate.buy_raw) || 0;
+                let parsedSell = parseFloat(rate.sell_raw) || 0;
+
+                let row = document.getElementById(`vcb-row-${rate.code}`);
+
+                if (!row) {
+                    // Create new row
+                    row = document.createElement('tr');
+                    row.id = `vcb-row-${rate.code}`;
+                    row.innerHTML = `
+                        <td>
+                            <div class="currency-cell">
+                                <div class="currency-icon" style="background: linear-gradient(135deg, #1e3a8a, #0f172a);">${rate.code.slice(0, 2)}</div>
+                                <div class="currency-name">
+                                    <span class="currency-code">${rate.code}</span>
+                                    <span class="currency-full">${rate.name}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="td-buy">
+                            <div class="price-container">
+                                <div class="price-val" id="vcb-buy-val-${rate.code}">${rate.buy_formatted !== '-' ? rate.buy_formatted + ' ₫' : '-'}</div>
+                                <div class="price-trend" id="vcb-buy-trend-${rate.code}"></div>
+                            </div>
+                        </td>
+                        <td class="td-sell">
+                            <div class="price-container">
+                                <div class="price-val" id="vcb-sell-val-${rate.code}">${rate.sell_formatted !== '-' ? rate.sell_formatted + ' ₫' : '-'}</div>
+                                <div class="price-trend" id="vcb-sell-trend-${rate.code}"></div>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+
+                    vcbCurrentPrices[rate.code] = {
+                        buy: parsedBuy,
+                        sell: parsedSell
+                    };
+                } else {
+                    let oldData = vcbCurrentPrices[rate.code];
+                    let buyChanged = parsedBuy !== oldData.buy;
+                    let sellChanged = parsedSell !== oldData.sell;
+
+                    if (buyChanged || sellChanged) {
+                        applyVcbFlashUpdate(row, rate, parsedBuy, oldData.buy, parsedSell, oldData.sell);
+                        vcbCurrentPrices[rate.code] = { buy: parsedBuy, sell: parsedSell };
+                    }
+                }
+            });
+
+            const now = new Date();
+            document.getElementById('vcbLastUpdated').textContent = now.getHours().toString().padStart(2, '0') + ':' +
+                now.getMinutes().toString().padStart(2, '0') + ':' + now.getSeconds().toString().padStart(2, '0');
+        }
+
+        // Apply visual flash animation to VCB rows (similar to original but without text obj requirement)
+        function applyVcbFlashUpdate(row, rate, parsedBuy, oldBuy, parsedSell, oldSell) {
+            let domBuyVal = document.getElementById(`vcb-buy-val-${rate.code}`);
+            let domSellVal = document.getElementById(`vcb-sell-val-${rate.code}`);
+            let domBuyTrend = document.getElementById(`vcb-buy-trend-${rate.code}`);
+            let domSellTrend = document.getElementById(`vcb-sell-trend-${rate.code}`);
+            let domBuyTd = row.querySelector('.td-buy');
+            let domSellTd = row.querySelector('.td-sell');
+
+            domBuyTd.classList.remove('flash-up', 'flash-down');
+            domSellTd.classList.remove('flash-up', 'flash-down');
+            void domBuyTd.offsetWidth;
+            void domSellTd.offsetWidth;
+
+            if (parsedBuy !== oldBuy && rate.buy_formatted !== '-') {
+                domBuyVal.textContent = rate.buy_formatted + ' ₫';
+                if (parsedBuy > oldBuy) {
+                    domBuyTd.classList.add('flash-up');
+                    domBuyTrend.innerHTML = '▲';
+                } else {
+                    domBuyTd.classList.add('flash-down');
+                    domBuyTrend.innerHTML = '▼';
+                }
+            }
+
+            if (parsedSell !== oldSell && rate.sell_formatted !== '-') {
+                domSellVal.textContent = rate.sell_formatted + ' ₫';
+                if (parsedSell > oldSell) {
+                    domSellTd.classList.add('flash-up');
+                    domSellTrend.innerHTML = '▲';
+                } else {
+                    domSellTd.classList.add('flash-down');
+                    domSellTrend.innerHTML = '▼';
+                }
+            }
+        }
+
 
     </script>
 </body>

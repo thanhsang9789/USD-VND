@@ -71,6 +71,41 @@ def fetch_chogia_data():
                 })
         return rates
 
+def fetch_vcb_data():
+    url = "https://chogia.vn/ty-gia/vietcombank/"
+    req = urllib.request.Request(
+        url, 
+        headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+    )
+    with urllib.request.urlopen(req) as response:
+        html_content = response.read().decode('utf-8')
+        table_match = re.search(r'<table.*?id="tbl_ty_gia".*?>(.*?)</table>', html_content, re.DOTALL)
+        rates = []
+        if table_match:
+            table_html = table_match.group(1)
+            rows = re.findall(r'<tr.*?>(.*?)</tr>', table_html, re.DOTALL)
+            for row in rows:
+                if '<th' in row: continue
+                tds = re.findall(r'<td.*?>(.*?)</td>', row, re.DOTALL)
+                if len(tds) >= 5:
+                    code = re.sub(r'<[^>]+>', '', tds[0]).strip()
+                    name = re.sub(r'<[^>]+>', '', tds[1]).strip()
+                    buy = re.sub(r'<[^>]+>', '', tds[2]).strip()
+                    sell = re.sub(r'<[^>]+>', '', tds[3]).strip()
+                    transfer = re.sub(r'<[^>]+>', '', tds[4]).strip()
+                    rates.append({
+                        "code": code,
+                        "name": name,
+                        "buy_formatted": buy,
+                        "sell_formatted": sell,
+                        "transfer_formatted": transfer,
+                        "buy_raw": buy.replace('.', '').replace(',', '.'),
+                        "sell_raw": sell.replace('.', '').replace(',', '.')
+                    })
+        return rates
+
 def send_telegram_alert(message):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -135,6 +170,19 @@ class ProxyHTTPRequestHandler(SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 super().end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+        elif self.path == '/api/vcb_rates':
+            try:
+                rates = fetch_vcb_data()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                super().end_headers()
+                self.wfile.write(json.dumps(rates).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                super().end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+
         else:
             if self.path == '/':
                 self.path = '/index.html'
